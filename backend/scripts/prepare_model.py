@@ -12,7 +12,12 @@ def main():
     dest=settings.model_dir
     dest.mkdir(parents=True,exist_ok=True)
     if settings.checkpoint.exists() and settings.manifest.exists():
-        verify_model(settings)
+        manifest=verify_model(settings)
+        expected=os.environ.get("EXPECTED_MODEL_SHA256","").strip().lower()
+        if settings.app_env=="production" and not expected:
+            raise RuntimeError("Production requires independently verified EXPECTED_MODEL_SHA256")
+        if expected and manifest["sha256"]!=expected:
+            raise RuntimeError("Cached model SHA256 does not match expected digest")
         print("Existing verified model:",settings.model_name)
         return
     url=RELEASE_BASE+settings.model_spec["filename"]
