@@ -9,7 +9,8 @@ WORKDIR /srv
 RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg libgomp1 ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY backend/requirements.txt /srv/requirements.txt
 RUN pip install --index-url "$PIP_PRIMARY_INDEX_URL" --extra-index-url "$PIP_FALLBACK_INDEX_URL" -r requirements.txt
-RUN pip install --index-url "$TORCH_CPU_INDEX_URL" torch==2.10.0+cpu torchvision==0.25.0+cpu torchaudio==2.10.0+cpu
+RUN pip install --index-url "$TORCH_CPU_INDEX_URL" --extra-index-url "$PIP_PRIMARY_INDEX_URL" --extra-index-url "$PIP_FALLBACK_INDEX_URL" \
+    torch==2.10.0+cpu torchvision==0.25.0+cpu torchaudio==2.10.0+cpu
 RUN python -c "import torch,torchvision,torchaudio; assert torch.version.cuda is None"
 COPY backend/app /srv/app
 COPY backend/scripts /srv/scripts
