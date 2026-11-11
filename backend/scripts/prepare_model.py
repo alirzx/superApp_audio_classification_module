@@ -4,11 +4,11 @@ import os
 import tempfile
 import urllib.request
 from pathlib import Path
-from app.core.config import RELEASE,RELEASE_BASE,Settings
+from app.core.config import RELEASE,RELEASE_BASE,ModelSetupSettings
 from app.core.model_integrity import sha256,verify_model
 
 def main():
-    settings=Settings()
+    settings=ModelSetupSettings()
     dest=settings.model_dir
     expected=settings.expected_model_sha256.lower()
     dest.mkdir(parents=True,exist_ok=True)

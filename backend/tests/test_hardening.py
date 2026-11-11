@@ -76,3 +76,24 @@ def test_production_digest_checked_even_if_manifest_matches_local_file(monkeypat
     monkeypatch.setenv("EXPECTED_MODEL_SHA256","0"*64)
     with pytest.raises(RuntimeError,match="pinned"):
         verify_model(Settings())
+
+
+def test_model_setup_production_no_api_secret(monkeypatch,tmp_path):
+    from app.core.config import ModelSetupSettings
+    monkeypatch.setenv("APP_ENV","production")
+    monkeypatch.setenv("API_TOKEN","")
+    monkeypatch.setenv("EXPECTED_MODEL_SHA256","a"*64)
+    monkeypatch.setenv("MODEL_DIR",str(tmp_path))
+    setup = ModelSetupSettings()
+    assert setup.model_name == "mn10_as"
+    assert setup.model_dir == tmp_path
+    with pytest.raises(ValueError,match="token"):
+        Settings()
+
+
+def test_model_setup_rejects_missing_prod_digest(monkeypatch):
+    from app.core.config import ModelSetupSettings
+    monkeypatch.setenv("APP_ENV","production")
+    monkeypatch.delenv("EXPECTED_MODEL_SHA256",raising=False)
+    with pytest.raises(ValueError,match="EXPECTED_MODEL_SHA256"):
+        ModelSetupSettings()

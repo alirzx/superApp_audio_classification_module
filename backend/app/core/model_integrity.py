@@ -1,7 +1,7 @@
 import hashlib
 import json
 from pathlib import Path
-from .config import RELEASE, RELEASE_BASE, Settings
+from .config import RELEASE, RELEASE_BASE, ModelSetupSettings
 
 def sha256(path: Path) -> str:
     h=hashlib.sha256()
@@ -9,7 +9,7 @@ def sha256(path: Path) -> str:
         for block in iter(lambda: stream.read(1024*1024), b""): h.update(block)
     return h.hexdigest()
 
-def verify_model(settings: Settings) -> dict:
+def verify_model(settings: ModelSetupSettings) -> dict:
     """Check cached release artifact and TOFU manifest; independent SHA pin needed for production bootstrap."""
     if not settings.checkpoint.is_file() or not settings.manifest.is_file():
         raise RuntimeError("Model unprepared: run model-setup")
