@@ -28,6 +28,10 @@ services:
         PIP_PRIMARY_INDEX_URL: ${PIP_PRIMARY_INDEX_URL:-https://package-mirror.liara.ir/repository/pypi/simple}
         PIP_FALLBACK_INDEX_URL: ${PIP_FALLBACK_INDEX_URL:-https://mirror2.chabokan.net/pypi/simple/}
         TORCH_CPU_INDEX_URL: ${TORCH_CPU_INDEX_URL:-https://download.pytorch.org/whl/cpu}
+        APT_PRIMARY_DEBIAN_URL: ${APT_PRIMARY_DEBIAN_URL:-https://mirror.metanet.ch/debian}
+        APT_PRIMARY_SECURITY_URL: ${APT_PRIMARY_SECURITY_URL:-https://mirror.metanet.ch/debian-security}
+        APT_FALLBACK_DEBIAN_URL: ${APT_FALLBACK_DEBIAN_URL:-https://mirrors.huaweicloud.com/repository/debian}
+        APT_FALLBACK_SECURITY_URL: ${APT_FALLBACK_SECURITY_URL:-https://mirrors.huaweicloud.com/repository/debian-security}
     image: superapp-audio-api:local
     depends_on:
       model-setup: {condition: service_completed_successfully}
@@ -76,6 +80,8 @@ services:
       args:
         NPM_REGISTRY_URL: ${NPM_REGISTRY_URL:-https://package-mirror.liara.ir/repository/npm/}
         NPM_FALLBACK_REGISTRY_URL: ${NPM_FALLBACK_REGISTRY_URL:-https://registry.npmjs.org/}
+        APK_PRIMARY_MIRROR_URL: ${APK_PRIMARY_MIRROR_URL:-https://linux-mirror.liara.ir/repository/alpine}
+        APK_FALLBACK_MIRROR_URL: ${APK_FALLBACK_MIRROR_URL:-https://mirrors.huaweicloud.com/alpine}
     image: superapp-audio-ui:local
     restart: unless-stopped
     init: true

@@ -17,7 +17,11 @@ def test_lan_ui_and_loopback_api():
     assert "API_BIND_IP=127.0.0.1" in production
     assert "API_PORT=8007" in production
     assert "API_TOKEN=\n" in production
-    assert not (ROOT/".gitlab-ci.yml").exists()
+    # GitLab CI is teammate-owned and retained unchanged by the prebuild hardening.
+    assert (ROOT/".gitlab-ci.yml").is_file()
+    ci=(ROOT/".gitlab-ci.yml").read_text()
+    assert "only:" in ci and "- master" in ci
+    assert "audio-classification/.env" in ci
 
 def test_nginx_proxy_does_not_expose_client_api_key():
     nginx=(ROOT/"ops/nginx.conf.template").read_text()

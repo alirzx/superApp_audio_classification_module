@@ -9,3 +9,6 @@
 7. Check per-user access policy, SSH deployment configuration, resource limits, no leaked model weights/API token, and source/license provenance.
 
 Mock tests do not validate model accuracy or full Docker runtime. CI is managed separately.
+
+8. Validate APT signed primary/fallback, PyPI primary/fallback, official CPU wheel installation, Arvan base images and npm/APK mirrors on the actual GitLab runner/server.
+9. CI owner verifies protected variables, pinned SSH host keys, deployment branch, and post-deploy readiness checks.

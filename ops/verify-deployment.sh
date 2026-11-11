@@ -5,6 +5,15 @@ set -eu
 : "${UI_PORT:=8088}"
 : "${API_PORT:=8007}"
 
+if [ -f .env ]; then
+  # Read only non-secret binding values from .env without exporting API_TOKEN.
+  UI_BIND_IP="$(sed -n 's/^UI_BIND_IP=//p' .env | tail -1)"
+  UI_PORT="$(sed -n 's/^UI_PORT=//p' .env | tail -1)"
+  API_PORT="$(sed -n 's/^API_PORT=//p' .env | tail -1)"
+  : "${UI_BIND_IP:=192.168.4.209}"
+  : "${UI_PORT:=8088}"
+  : "${API_PORT:=8007}"
+fi
 echo "Validating Compose configuration..."
 docker compose --env-file .env config --quiet
 echo "Checking containers..."

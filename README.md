@@ -42,3 +42,10 @@ Model/CPU smoke tests require installing the matching CPU-only PyTorch stack and
 See `docs/API.md`, `docs/ARCHITECTURE.md`, `docs/DEPLOYMENT.md`, `docs/MODEL_PROVENANCE.md`, and `docs/TEST_PLAN.md`.
 
 **CI is intentionally excluded.** Your deployment teammate owns `.gitlab-ci.yml`, server branches, runner, SSH credentials, and protected environment delivery.
+
+
+## Prebuild mirror and GitLab deployment notes
+
+Docker images use `docker.arvancloud.ir` for Python 3.11 Bookworm, Node 22 Alpine and Nginx Alpine, matching Module 06's successful source pattern. APT uses signed Debian mirror fallback; PyPI uses primary Liara with fallback Chabokan; CPU PyTorch/Torchvision/Torchaudio are pinned to matching 2.10.0 CPU wheel versions; npm and Alpine APK have mirror fallbacks. Custom mirror URLs can be set via Compose build args in `.env`. These are source-level configurations and have not yet passed a real networked server build.
+
+GitLab `.gitlab-ci.yml` is owned by the deployment teammate and is intentionally unmodified by this polish. It deploys GitLab `master` to `/home/deb/new-aiservices/audio-classification`. It currently uses password-based SSH, dynamic `ssh-keyscan` and no post-deploy health gate; the CI owner should harden those separately. The one-shot model-setup has a separate `ModelSetupSettings` contract and does not require the API token.
