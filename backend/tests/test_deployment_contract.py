@@ -31,3 +31,17 @@ def test_nginx_proxy_does_not_expose_client_api_key():
     frontend=(ROOT/"frontend/src/App.tsx").read_text()
     assert "X-API-Key" not in frontend
     assert "fetch('/api/v1/classify'" in frontend
+
+def test_tmpfs_mounts_are_structured_and_absolute():
+    compose=yaml.safe_load((ROOT/"docker-compose.yml").read_text())
+    api_mounts=compose["services"]["api"]["volumes"]
+    ui_mounts=compose["services"]["ui"]["volumes"]
+    api_tmpfs=[m for m in api_mounts if isinstance(m,dict) and m.get("type")=="tmpfs"]
+    ui_tmpfs=[m for m in ui_mounts if isinstance(m,dict) and m.get("type")=="tmpfs"]
+    assert [m["target"] for m in api_tmpfs]==["/tmp"]
+    assert {m["target"] for m in ui_tmpfs}=={"/tmp","/var/cache/nginx","/var/run"}
+    for mount in api_tmpfs + ui_tmpfs:
+        assert mount["target"].startswith("/")
+        assert mount["tmpfs"]["size"]>0
+        assert mount["tmpfs"]["mode"]==1777
+    assert not any("nosuid" in str(m) for m in api_mounts + ui_mounts)

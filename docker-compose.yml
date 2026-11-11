@@ -59,8 +59,13 @@ services:
       OMP_NUM_THREADS: ${CPU_THREADS:-2}
       OPENBLAS_NUM_THREADS: "1"
       MKL_NUM_THREADS: "1"
-    volumes: [model_cache:/models:ro]
-    tmpfs: [/tmp:rw,nosuid,nodev,size=64m]
+    volumes:
+      - model_cache:/models:ro
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          size: 67108864
+          mode: 1777
     ports: ["${API_BIND_IP:-127.0.0.1}:${API_PORT:-8007}:8000"]
     cpus: ${API_CPUS:-2.0}
     mem_limit: ${API_MEMORY:-1200m}
@@ -94,10 +99,24 @@ services:
     read_only: true
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
-    tmpfs:
-      - /tmp:rw,nosuid,nodev,size=8m,uid=101,gid=101
-      - /var/cache/nginx:rw,nosuid,nodev,size=16m,uid=101,gid=101
-      - /var/run:rw,nosuid,nodev,size=4m,uid=101,gid=101
+    # Explicit tmpfs mounts avoid comma parsing as separate Docker mount paths.
+    # Mode 1777 allows unprivileged Nginx (uid 101) to write to mounted scratch dirs.
+    volumes:
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          size: 8388608
+          mode: 1777
+      - type: tmpfs
+        target: /var/cache/nginx
+        tmpfs:
+          size: 16777216
+          mode: 1777
+      - type: tmpfs
+        target: /var/run
+        tmpfs:
+          size: 4194304
+          mode: 1777
     healthcheck:
       test: [CMD,wget,-q,-O,/dev/null,"http://127.0.0.1:8080/healthz"]
       interval: 30s
