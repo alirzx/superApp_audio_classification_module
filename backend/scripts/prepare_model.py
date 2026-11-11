@@ -10,12 +10,10 @@ from app.core.model_integrity import sha256,verify_model
 def main():
     settings=Settings()
     dest=settings.model_dir
+    expected=settings.expected_model_sha256.lower()
     dest.mkdir(parents=True,exist_ok=True)
     if settings.checkpoint.exists() and settings.manifest.exists():
         manifest=verify_model(settings)
-        expected=os.environ.get("EXPECTED_MODEL_SHA256","").strip().lower()
-        if settings.app_env=="production" and not expected:
-            raise RuntimeError("Production requires independently verified EXPECTED_MODEL_SHA256")
         if expected and manifest["sha256"]!=expected:
             raise RuntimeError("Cached model SHA256 does not match expected digest")
         print("Existing verified model:",settings.model_name)
@@ -30,14 +28,25 @@ def main():
                 if out.tell()>settings.model_spec["size"]: raise RuntimeError("Unexpected downloaded model size")
         if tmp.stat().st_size!=settings.model_spec["size"]: raise RuntimeError("Model file size mismatch")
         digest=sha256(tmp)
-        expected=os.environ.get("EXPECTED_MODEL_SHA256","").strip().lower()
-        if settings.app_env=="production" and not expected:
-            raise RuntimeError("Production requires an independently verified EXPECTED_MODEL_SHA256")
         if expected and digest!=expected: raise RuntimeError("Expected model SHA256 mismatch")
-        tmp.replace(settings.checkpoint)
-        settings.manifest.write_text(json.dumps({"name":settings.model_name,
+        os.chmod(tmp,0o644)
+        os.replace(tmp,settings.checkpoint)
+        manifest={"name":settings.model_name,
             "filename":settings.model_spec["filename"],"release":RELEASE,"url":url,
-            "size":settings.model_spec["size"],"sha256":digest},indent=2)+"\n")
+            "size":settings.model_spec["size"],"sha256":digest}
+        with tempfile.NamedTemporaryFile(prefix=".manifest-",dir=dest,
+                                         mode="w",encoding="utf-8",delete=False) as mf:
+            manifest_tmp=Path(mf.name)
+            try:
+                json.dump(manifest,mf,indent=2)
+                mf.write("\n")
+                mf.flush()
+                os.fsync(mf.fileno())
+                os.chmod(manifest_tmp,0o644)
+            except Exception:
+                manifest_tmp.unlink(missing_ok=True)
+                raise
+        os.replace(manifest_tmp,settings.manifest)
         print("Model verified and cached:",settings.model_name,digest)
     finally:
         tmp.unlink(missing_ok=True)

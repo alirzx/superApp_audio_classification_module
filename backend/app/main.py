@@ -11,7 +11,7 @@ from prometheus_client import Counter,Histogram,CONTENT_TYPE_LATEST,generate_lat
 from app.core.config import Settings,MODELS
 from app.inference.classifier import EfficientATClassifier
 from app.services.classification import ClassificationService
-from app.audio.validation import InvalidAudio,check_upload
+from app.audio.validation import InvalidAudio,AudioTooLarge,check_upload
 from app.core.request_limits import RequestBodyLimitMiddleware
 
 logger=logging.getLogger(__name__)
@@ -81,6 +81,9 @@ def create_app(settings: Settings|None=None,engine_factory: Callable=EfficientAT
                                                (file.filename or "audio")[:160],k,threshold)
                 COUNTER.labels("ok").inc()
                 return result
+            except AudioTooLarge as exc:
+                COUNTER.labels("oversize").inc()
+                raise HTTPException(413,str(exc)) from exc
             except InvalidAudio as exc:
                 COUNTER.labels("invalid").inc()
                 raise HTTPException(422,str(exc)) from exc

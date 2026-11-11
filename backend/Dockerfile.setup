@@ -8,5 +8,6 @@ RUN pip install --no-cache-dir --index-url "$PIP_PRIMARY_INDEX_URL" --extra-inde
 COPY backend/app /srv/app
 COPY backend/scripts /srv/scripts
 RUN useradd -r -u 10001 -d /srv runner && mkdir /models && chown runner:runner /models
-USER runner
+# Bootstrap runs as root so a newly provisioned Docker named volume can be written.
+# The API stays unprivileged and mounts the cache read-only.
 CMD ["python","-m","scripts.prepare_model"]
