@@ -4,7 +4,7 @@ import numpy as np
 from app.core.config import Settings
 from app.core.model_integrity import verify_model
 
-UPSTREAM=Path(__file__).resolve().parents[3]/"third_party"/"efficientat"
+UPSTREAM=Path(__file__).resolve().parents[2]/"third_party"/"efficientat"
 
 class EfficientATClassifier:
     def __init__(self, settings: Settings):
@@ -16,6 +16,8 @@ class EfficientATClassifier:
 
     def initialize(self):
         verify_model(self.settings)
+        if not (UPSTREAM / "models" / "mn" / "model.py").is_file():
+            raise RuntimeError(f"EfficientAT model sources not found at {UPSTREAM}")
         if str(UPSTREAM) not in sys.path: sys.path.insert(0,str(UPSTREAM))
         import torch
         from models.mn.model import get_model

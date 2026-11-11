@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -14,6 +15,7 @@ class Settings(BaseSettings):
     app_env: str = "development"
     api_token: str = ""
     model_name: str = "mn10_as"
+    expected_model_sha256: str = ""
     model_dir: Path = Path("/models")
     cpu_threads: int = Field(2, ge=1, le=32)
     max_concurrent_inference: int = Field(1, ge=1, le=4)
@@ -32,6 +34,10 @@ class Settings(BaseSettings):
         if self.model_name not in MODELS: raise ValueError("Unsupported model")
         if self.app_env not in {"test","development","production"}: raise ValueError("Invalid APP_ENV")
         if self.app_env == "production" and len(self.api_token) < 24: raise ValueError("Production token must be >=24 chars")
+        if self.expected_model_sha256 and not re.fullmatch(r"[0-9a-fA-F]{64}", self.expected_model_sha256):
+            raise ValueError("EXPECTED_MODEL_SHA256 must be 64 hexadecimal characters")
+        if self.app_env == "production" and not self.expected_model_sha256:
+            raise ValueError("Production requires EXPECTED_MODEL_SHA256")
         if self.max_request_bytes <= self.max_upload_mb*1024*1024: raise ValueError("Request limit must exceed upload limit")
         if self.window_seconds > self.max_duration_seconds: raise ValueError("Window too long")
         if self.max_decode_bytes < self.max_duration_seconds*32000*4: raise ValueError("Decode limit too small")

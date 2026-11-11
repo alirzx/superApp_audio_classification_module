@@ -21,5 +21,7 @@ def verify_model(settings: Settings) -> dict:
     if settings.checkpoint.stat().st_size!=expected["size"]: raise RuntimeError("Model size mismatch")
     if not isinstance(manifest.get("sha256"),str) or len(manifest["sha256"])!=64:
         raise RuntimeError("Missing model checksum")
+    if settings.expected_model_sha256 and manifest["sha256"].lower()!=settings.expected_model_sha256.lower():
+        raise RuntimeError("Model SHA256 does not match independently pinned digest")
     if sha256(settings.checkpoint)!=manifest["sha256"]: raise RuntimeError("Model checksum mismatch")
     return manifest
