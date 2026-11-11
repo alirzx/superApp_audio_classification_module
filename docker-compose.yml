@@ -1,0 +1,99 @@
+name: superapp-audio-classification
+services:
+  model-setup:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.setup
+      args:
+        PIP_PRIMARY_INDEX_URL: ${PIP_PRIMARY_INDEX_URL:-https://package-mirror.liara.ir/repository/pypi/simple}
+        PIP_FALLBACK_INDEX_URL: ${PIP_FALLBACK_INDEX_URL:-https://mirror2.chabokan.net/pypi/simple/}
+    image: superapp-audio-model-setup:local
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      MODEL_DIR: /models
+      MODEL_NAME: ${MODEL_NAME:-mn10_as}
+      EXPECTED_MODEL_SHA256: ${EXPECTED_MODEL_SHA256:-}
+    volumes: [model_cache:/models]
+    restart: "no"
+    cpus: ${SETUP_CPUS:-1.0}
+    mem_limit: ${SETUP_MEMORY:-256m}
+    pids_limit: 64
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        PIP_PRIMARY_INDEX_URL: ${PIP_PRIMARY_INDEX_URL:-https://package-mirror.liara.ir/repository/pypi/simple}
+        PIP_FALLBACK_INDEX_URL: ${PIP_FALLBACK_INDEX_URL:-https://mirror2.chabokan.net/pypi/simple/}
+        TORCH_CPU_INDEX_URL: ${TORCH_CPU_INDEX_URL:-https://download.pytorch.org/whl/cpu}
+    image: superapp-audio-api:local
+    depends_on:
+      model-setup: {condition: service_completed_successfully}
+    restart: unless-stopped
+    init: true
+    user: "10001:10001"
+    read_only: true
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      API_TOKEN: ${API_TOKEN:-}
+      MODEL_DIR: /models
+      MODEL_NAME: ${MODEL_NAME:-mn10_as}
+      CPU_THREADS: ${CPU_THREADS:-2}
+      MAX_CONCURRENT_INFERENCE: ${MAX_CONCURRENT_INFERENCE:-1}
+      MAX_QUEUE_WAIT_SECONDS: ${MAX_QUEUE_WAIT_SECONDS:-10}
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-20}
+      MAX_REQUEST_BYTES: ${MAX_REQUEST_BYTES:-23068672}
+      MAX_DURATION_SECONDS: ${MAX_DURATION_SECONDS:-60}
+      MAX_DECODE_BYTES: ${MAX_DECODE_BYTES:-83886080}
+      WINDOW_SECONDS: ${WINDOW_SECONDS:-10}
+      SCORE_THRESHOLD: ${SCORE_THRESHOLD:-0.10}
+      TOP_K: ${TOP_K:-10}
+      ENABLE_METRICS: ${ENABLE_METRICS:-true}
+      OMP_NUM_THREADS: ${CPU_THREADS:-2}
+      OPENBLAS_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+    volumes: [model_cache:/models:ro]
+    tmpfs: [/tmp:rw,nosuid,nodev,size=64m]
+    ports: ["${API_BIND_IP:-127.0.0.1}:${API_PORT:-8007}:8000"]
+    cpus: ${API_CPUS:-2.0}
+    mem_limit: ${API_MEMORY:-1200m}
+    pids_limit: 128
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: [CMD,python,-c,"import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/health/ready',timeout=5)"]
+      start_period: 180s
+      interval: 30s
+      timeout: 8s
+      retries: 3
+  ui:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        NPM_REGISTRY_URL: ${NPM_REGISTRY_URL:-https://registry.npmjs.org/}
+    image: superapp-audio-ui:local
+    restart: unless-stopped
+    init: true
+    environment:
+      API_TOKEN: ${API_TOKEN:-}
+    ports: ["${UI_BIND_IP:-127.0.0.1}:${UI_PORT:-8088}:8080"]
+    cpus: ${UI_CPUS:-0.5}
+    mem_limit: ${UI_MEMORY:-256m}
+    pids_limit: 64
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=8m,uid=101,gid=101
+      - /var/cache/nginx:rw,nosuid,nodev,size=16m,uid=101,gid=101
+      - /var/run:rw,nosuid,nodev,size=4m,uid=101,gid=101
+    healthcheck:
+      test: [CMD,wget,-q,-O,/dev/null,"http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+volumes:
+  model_cache:

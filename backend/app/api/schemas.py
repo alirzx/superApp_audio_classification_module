@@ -1,0 +1,31 @@
+from pydantic import BaseModel, Field
+
+class Prediction(BaseModel):
+    label_id: int
+    label: str
+    score: float=Field(ge=0,le=1)
+class Segment(BaseModel):
+    start_seconds: float
+    end_seconds: float
+    predictions: list[Prediction]
+class ModelInfo(BaseModel):
+    id: str
+    release: str
+    backend: str="efficientat"
+    device: str="cpu"
+    classes: int=527
+class AudioInfo(BaseModel):
+    filename: str
+    duration_seconds: float
+    sample_rate: int=32000
+    channels: int=1
+    windows: int
+class ClassificationResponse(BaseModel):
+    schema_version: str="superapp.audio-classification.v1"
+    request_id: str
+    model: ModelInfo
+    audio: AudioInfo
+    predictions: list[Prediction]
+    segments: list[Segment]
+    processing_time_ms: float
+    warnings: list[str]=Field(default_factory=list)
