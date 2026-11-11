@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     def validate_settings(self):
         if self.model_name not in MODELS: raise ValueError("Unsupported model")
         if self.app_env not in {"test","development","production"}: raise ValueError("Invalid APP_ENV")
-        if self.app_env == "production" and len(self.api_token) < 24: raise ValueError("Production token must be >=24 chars")
+        if self.app_env == "production" and (len(self.api_token) < 24 or self.api_token.startswith(("REPLACE_", "CHANGE_ME"))): raise ValueError("Production token must be >=24 chars")
         if self.expected_model_sha256 and not re.fullmatch(r"[0-9a-fA-F]{64}", self.expected_model_sha256):
             raise ValueError("EXPECTED_MODEL_SHA256 must be 64 hexadecimal characters")
         if self.app_env == "production" and not self.expected_model_sha256:

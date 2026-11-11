@@ -25,6 +25,8 @@ curl -fsS -H "X-API-Key: $API_TOKEN" -F "file=@sample.wav" http://127.0.0.1:8007
 
 The one-shot model setup downloads from the pinned official EfficientAT `v0.0.1` release, checks asset size, and creates an integrity manifest. **Upstream release metadata does not contain a SHA256 digest.** Development bootstrapping can use trust-on-first-use; **production setup requires an independently verified `EXPECTED_MODEL_SHA256`**. The API checks SHA256 on every startup and uses `torch.load(weights_only=True)` with strict model state loading. Do not download arbitrary checkpoints.
 
+The server production template binds `UI_BIND_IP=192.168.4.209` on port `8088`, so approved LAN/VPN users can open `http://192.168.4.209:8088` while the API stays bound to loopback `127.0.0.1:8007`. Ensure that IP exists on the Docker host, that the host firewall permits TCP/8088 from your approved networks, and that VPN routing allows reaching the subnet. Set the real `API_TOKEN` and separately verified `EXPECTED_MODEL_SHA256` in the server-only `.env` stored securely by the deployment team. Never commit credentials.
+
 The frontend Nginx proxy injects `X-API-Key` server-side and proxies `/api/*` to the API. **This is service authentication, not per-user authentication.** Restrict ingress to approved LAN/VPN clients or use authenticated HTTPS ingress.
 
 ## Tests and rollout

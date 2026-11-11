@@ -1,9 +1,10 @@
 # syntax=docker/dockerfile:1.6
 FROM node:22-alpine AS build
-ARG NPM_REGISTRY_URL=https://registry.npmjs.org/
+ARG NPM_REGISTRY_URL=https://package-mirror.liara.ir/repository/npm/
+ARG NPM_FALLBACK_REGISTRY_URL=https://registry.npmjs.org/
 WORKDIR /app
 COPY frontend/package*.json ./
-RUN npm config set registry "$NPM_REGISTRY_URL" && npm install
+RUN (npm install --registry="$NPM_REGISTRY_URL" --no-audit --no-fund || npm install --registry="$NPM_FALLBACK_REGISTRY_URL" --no-audit --no-fund)
 COPY frontend/ ./
 RUN npm run build
 FROM nginx:1.29-alpine
