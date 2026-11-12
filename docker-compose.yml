@@ -100,22 +100,14 @@ services:
     read_only: true
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
-    # Explicit tmpfs mounts avoid comma parsing as separate Docker mount paths.
-    # Let Docker apply default tmpfs mode 01777 so uid 101 can write.
-    # YAML numeric mode: 1777 can be passed as decimal 1777 (= octal 03361).
+    # Nginx runs unprivileged with a read-only root filesystem.
+    # All its runtime state (config, pid, temp body files) uses one writable
+    # /tmp tmpfs; do not mount /var/cache/nginx or /var/run here.
     volumes:
       - type: tmpfs
         target: /tmp
         tmpfs:
-          size: 8388608
-      - type: tmpfs
-        target: /var/cache/nginx
-        tmpfs:
-          size: 16777216
-      - type: tmpfs
-        target: /var/run
-        tmpfs:
-          size: 4194304
+          size: 67108864
     healthcheck:
       test: [CMD,wget,-q,-O,/dev/null,"http://127.0.0.1:8080/healthz"]
       interval: 30s

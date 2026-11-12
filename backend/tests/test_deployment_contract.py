@@ -39,7 +39,8 @@ def test_tmpfs_mounts_are_structured_and_absolute():
     api_tmpfs=[m for m in api_mounts if isinstance(m,dict) and m.get("type")=="tmpfs"]
     ui_tmpfs=[m for m in ui_mounts if isinstance(m,dict) and m.get("type")=="tmpfs"]
     assert [m["target"] for m in api_tmpfs]==["/tmp"]
-    assert {m["target"] for m in ui_tmpfs}=={"/tmp","/var/cache/nginx","/var/run"}
+    assert [m["target"] for m in ui_tmpfs]==["/tmp"]
+    assert ui_tmpfs[0]["tmpfs"]["size"]>=32*1024*1024
     for mount in api_tmpfs + ui_tmpfs:
         assert mount["target"].startswith("/")
         assert mount["tmpfs"]["size"]>0
@@ -47,3 +48,22 @@ def test_tmpfs_mounts_are_structured_and_absolute():
         # can mount as 03361, leaving non-root users unable to write.
         assert "mode" not in mount["tmpfs"]
     assert not any("nosuid" in str(m) for m in api_mounts + ui_mounts)
+
+def test_nginx_scratch_paths_inside_writable_tmpfs():
+    compose=yaml.safe_load((ROOT/"docker-compose.yml").read_text())
+    ui=compose["services"]["ui"]
+    assert ui["read_only"] is True
+    assert ui["cap_drop"]==["ALL"]
+    assert all(
+        isinstance(m,dict) and m["target"]=="/tmp"
+        for m in ui["volumes"]
+    )
+    nginx=(ROOT/"ops/nginx.conf.template").read_text()
+    for temp_path in ("client_body","proxy","fastcgi","uwsgi","scgi"):
+        assert f"/tmp/nginx-temp/{temp_path}" in nginx
+    assert "/var/cache/nginx" not in nginx
+    assert "proxy_request_buffering off;" in nginx
+    assert "pid /tmp/nginx.pid;" in nginx
+    entrypoint=(ROOT/"ops/nginx-entrypoint.sh").read_text()
+    assert "mkdir -p /tmp/nginx-temp/client_body" in entrypoint
+    assert "nginx -t -c /tmp/nginx.conf" in entrypoint

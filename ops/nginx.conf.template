@@ -8,6 +8,13 @@ http {
  access_log off;
  sendfile on;
  client_max_body_size 22m;
+ # All writable Nginx scratch paths stay on the /tmp tmpfs. Never use
+ # /var/cache/nginx here: its separate mount is root-owned at runtime.
+ client_body_temp_path /tmp/nginx-temp/client_body;
+ proxy_temp_path /tmp/nginx-temp/proxy;
+ fastcgi_temp_path /tmp/nginx-temp/fastcgi;
+ uwsgi_temp_path /tmp/nginx-temp/uwsgi;
+ scgi_temp_path /tmp/nginx-temp/scgi;
  server {
   listen 8080;
   server_name _;
@@ -25,6 +32,8 @@ http {
    proxy_read_timeout 180s;
    proxy_send_timeout 90s;
    proxy_buffering off;
+   # Stream uploaded audio to the API instead of buffering large bodies to disk.
+   proxy_request_buffering off;
   }
   location / {try_files $uri $uri/ /index.html;}
  }

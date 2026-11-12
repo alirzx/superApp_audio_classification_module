@@ -68,3 +68,20 @@ docker compose --env-file .env logs --tail=100 api ui model-setup
 ```
 
 Both one-off probes should pass as the configured non-root users. If they fail, inspect the real mount permissions using `docker inspect` and check the host's security policies rather than weakening file-system read-only settings or running containers as root. No need to delete the model volume or change CI settings to fix these permissions.
+
+## Nginx UI startup: avoid root-owned cache mounts
+
+On the 2026-11-12 server deployment, model setup exited successfully and the API was healthy, but Nginx failed while trying to create `/var/cache/nginx/client_temp` (permission denied). The Docker image runs as the `nginx` non-root user with a read-only root filesystem. Root ownership of separate tmpfs mounts can make `/var/cache/nginx` unwritable even when `/tmp` is writable.
+
+The fix routes all five Nginx temporary directories to `/tmp/nginx-temp/{client_body,proxy,fastcgi,uwsgi,scgi}` and creates them as the existing nginx user before `nginx -t`. The UI has one 64 MiB `/tmp` tmpfs for config/pid/upload buffering. The old `/var/cache/nginx` and `/var/run` tmpfs mounts were removed. Nginx request buffering is disabled for proxied `/api/` audio uploads. Security settings (`USER nginx`, `read_only`, `cap_drop: ALL`, `no-new-privileges`) remain unchanged.
+
+After the new UI image deploys, verify:
+```bash
+cd /home/deb/new-aiservices/audio-classification
+docker compose --env-file .env config --quiet
+docker compose --env-file .env ps -a
+docker compose --env-file .env logs --tail=70 ui api
+curl -fsS http://127.0.0.1:8088/healthz
+curl -fsS http://127.0.0.1:8088/api/health/ready
+```
+Those curl probes assume `UI_BIND_IP=0.0.0.0` or `127.0.0.1`; if bound to a specific host IP, replace the loopback address with that IP. The real model checkpoint remains in the named volume. Do not remove it or run `docker compose down -v`.
