@@ -43,5 +43,7 @@ def test_tmpfs_mounts_are_structured_and_absolute():
     for mount in api_tmpfs + ui_tmpfs:
         assert mount["target"].startswith("/")
         assert mount["tmpfs"]["size"]>0
-        assert mount["tmpfs"]["mode"]==1777
+        # Omitted mode uses Docker default 01777. Numeric 1777 is decimal and
+        # can mount as 03361, leaving non-root users unable to write.
+        assert "mode" not in mount["tmpfs"]
     assert not any("nosuid" in str(m) for m in api_mounts + ui_mounts)

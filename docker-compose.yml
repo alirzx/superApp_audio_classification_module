@@ -59,13 +59,14 @@ services:
       OMP_NUM_THREADS: ${CPU_THREADS:-2}
       OPENBLAS_NUM_THREADS: "1"
       MKL_NUM_THREADS: "1"
+    # Docker's default tmpfs permissions are 01777 (writable by non-root).
+    # Do not set numeric mode: 1777 here: it can be interpreted as decimal.
     volumes:
       - model_cache:/models:ro
       - type: tmpfs
         target: /tmp
         tmpfs:
           size: 67108864
-          mode: 1777
     ports: ["${API_BIND_IP:-127.0.0.1}:${API_PORT:-8007}:8000"]
     cpus: ${API_CPUS:-2.0}
     mem_limit: ${API_MEMORY:-1200m}
@@ -100,23 +101,21 @@ services:
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     # Explicit tmpfs mounts avoid comma parsing as separate Docker mount paths.
-    # Mode 1777 allows unprivileged Nginx (uid 101) to write to mounted scratch dirs.
+    # Let Docker apply default tmpfs mode 01777 so uid 101 can write.
+    # YAML numeric mode: 1777 can be passed as decimal 1777 (= octal 03361).
     volumes:
       - type: tmpfs
         target: /tmp
         tmpfs:
           size: 8388608
-          mode: 1777
       - type: tmpfs
         target: /var/cache/nginx
         tmpfs:
           size: 16777216
-          mode: 1777
       - type: tmpfs
         target: /var/run
         tmpfs:
           size: 4194304
-          mode: 1777
     healthcheck:
       test: [CMD,wget,-q,-O,/dev/null,"http://127.0.0.1:8080/healthz"]
       interval: 30s

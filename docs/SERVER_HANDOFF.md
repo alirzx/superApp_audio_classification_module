@@ -51,3 +51,20 @@ Verify logs show `model-setup` exited zero, API `/health/ready` 200, UI `/health
 Only the code and configuration are committed. No real checkpoint weights or credentials are stored. Docker builds, full PyTorch model loading, frontend npm install, and real CPU benchmark must run in a networked deployment environment. A frontend npm lockfile is not yet committed. Do not claim production acceptance before these checks pass.
 
 The GitLab CI pipeline is tracked in `.gitlab-ci.yml` and owned by the deployment teammate. The prebuild hardening preserves its contents unchanged. The existing CI uses `sshpass` password-based SSH and dynamically collected `ssh-keyscan` host keys; these are operational security risks. Before broader deployment, the CI owner should move to pinned host keys, SSH key-based authentication, and an explicit post-deployment readiness gate. The deployed checkout path is `/home/deb/new-aiservices/audio-classification` and the deploy branch is `master`. Never print `.env` or credentials in logs. Runtime configuration remains distinct from CI variables. Do not copy CI assumptions from another module.
+
+## Runtime tmpfs permissions (container startup)
+
+Both API (uid 10001) and UI (nginx uid 101) use read-only root filesystems with dedicated tmpfs mounts for writable scratch paths. **Do not add numeric `mode: 1777`** to the long-syntax mounts: the YAML integer can reach Docker as decimal `1777` (octal `03361`), leaving non-root users unable to write. When omitted, Docker defaults tmpfs permission mode to octal `01777`.
+
+On the deployment host, after recreating the containers, check actual runtime directory modes and write access **without waiting for the applications to boot**:
+
+```bash
+cd /home/deb/new-aiservices/audio-classification
+docker compose --env-file .env config --quiet
+docker compose --env-file .env run --rm --no-deps --entrypoint sh ui -c 'id; ls -ld /tmp /var/cache/nginx /var/run; touch /tmp/.write-test /var/cache/nginx/.write-test /var/run/.write-test && rm /tmp/.write-test /var/cache/nginx/.write-test /var/run/.write-test && echo "UI tmpfs write: OK"'
+docker compose --env-file .env run --rm --no-deps --entrypoint python api -c 'import tempfile; f = tempfile.TemporaryFile(); f.write(b"ok"); f.close(); print("API tmpfs write: OK")'
+docker compose --env-file .env ps -a
+docker compose --env-file .env logs --tail=100 api ui model-setup
+```
+
+Both one-off probes should pass as the configured non-root users. If they fail, inspect the real mount permissions using `docker inspect` and check the host's security policies rather than weakening file-system read-only settings or running containers as root. No need to delete the model volume or change CI settings to fix these permissions.
